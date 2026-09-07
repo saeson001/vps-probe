@@ -1,0 +1,107 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ---- Linux: fully static musl binaries (no glibc / no runtime deps) ----
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            cross: false
+            asset: vps-probe-linux-amd64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            cross: true
+            asset: vps-probe-linux-arm64
+          # ---- Windows (dashboard convenience) ----
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            cross: false
+            asset: vps-probe-windows-amd64.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install musl-tools
+        if: runner.os == 'Linux' && !matrix.cross
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y musl-tools
+
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - name: Build
+        shell: bash
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp "target/${{ matrix.target }}/release/vps-probe.exe" "dist/${{ matrix.asset }}"
+          else
+            cp "target/${{ matrix.target }}/release/vps-probe" "dist/${{ matrix.asset }}"
+            chmod +x "dist/${{ matrix.asset }}"
+            # sanity: prove it is statically linked
+            file "dist/${{ matrix.asset }}" || true
+            if command -v ldd >/dev/null; then
+              echo "--- ldd ---"; ldd "dist/${{ matrix.asset }}" 2>&1 || true
+            fi
+          fi
+          cd dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "../${{ matrix.asset }}.zip" "${{ matrix.asset }}" || powershell -Command "Compress-Archive -Path '${{ matrix.asset }}' -DestinationPath '../${{ matrix.asset }}.zip'"
+          else
+            tar czf "../${{ matrix.asset }}.tar.gz" "${{ matrix.asset }}"
+            sha256sum "${{ matrix.asset }}" > "../${{ matrix.asset }}.sha256"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: |
+            ${{ matrix.asset }}.tar.gz
+            ${{ matrix.asset }}.sha256
+            ${{ matrix.asset }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*
+          generate_release_notes: true
