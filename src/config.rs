@@ -160,6 +160,11 @@ pub fn dump(c: &Config) -> String {
     format!("{}\n", pretty(&J::Obj(m), 0))
 }
 
+/// Persist a config object back to disk (used by the dashboard host editor).
+pub fn save(path: &str, c: &Config) -> Result<(), String> {
+    std::fs::write(path, dump(c)).map_err(|e| format!("write {} failed: {}", path, e))
+}
+
 fn pretty(v: &J, indent: usize) -> String {
     let pad = "  ".repeat(indent);
     match v {

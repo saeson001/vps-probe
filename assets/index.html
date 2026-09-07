@@ -17,6 +17,11 @@ h1{font-size:19px;font-weight:600;letter-spacing:.5px}
 .sub{color:var(--dim);font-size:12px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);display:inline-block}
 .live{background:var(--ok);box-shadow:0 0 0 3px rgba(63,185,80,.15)}
+.spacer{flex:1}
+.btn{background:var(--acc);color:#06111f;border:none;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent;color:var(--acc);border:1px solid var(--acc)}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid var(--bad)}
 #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;transition:.18s;position:relative;overflow:hidden}
 .card:hover{border-color:#3d444d;transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,.35)}
@@ -55,6 +60,25 @@ a.nm:hover{color:var(--acc);text-decoration:underline}
 .err{margin-top:9px;font-size:11px;color:var(--warn);background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.25);border-radius:7px;padding:6px 9px;word-break:break-all}
 .empty{color:var(--dim);text-align:center;padding:50px 0}
 footer{margin-top:20px;color:var(--dim);font-size:11px;text-align:center}
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.ov.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:14px;width:min(560px,100%);max-height:90vh;overflow:auto;padding:20px 22px}
+.modal h2{font-size:17px;margin-bottom:14px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px}
+.field input,.field textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--acc)}
+.field .hint{font-size:11px;color:var(--dim);margin-top:4px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+/* host list */
+.hitem{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.hitem .hn{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.hitem .hn b{font-size:15px;flex:1}
+.hitem .ha{font-size:11px;color:var(--dim);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:7px 9px;margin:6px 0;font-family:ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;position:relative}
+.copy{position:absolute;top:5px;right:5px;background:var(--acc);color:#06111f;border:none;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;font-weight:600}
+.copy:hover{filter:brightness(1.1)}
+.muted{color:var(--dim);font-size:12px}
 </style>
 </head>
 <body>
@@ -62,12 +86,65 @@ footer{margin-top:20px;color:var(--dim);font-size:11px;text-align:center}
   <span class="dot" id="live"></span>
   <h1>{{TITLE}}</h1>
   <span class="sub" id="status">加载中…</span>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="btnManage">管理服务器</button>
+  <button class="btn" id="btnAdd">+ 添加服务器</button>
 </header>
 <div id="grid"><div class="empty">正在加载…</div></div>
-<footer>vps-probe · Rust 单文件静态二进制 · 卡片可点击跳转管理页</footer>
+<footer>vps-probe · Rust 单文件静态二进制 · 卡片可点击跳转管理页 · 网页内可增删 N 台 VPS</footer>
+
+<!-- 添加/编辑 服务器 弹窗 -->
+<div class="ov" id="formOv">
+  <div class="modal">
+    <h2 id="formTitle">添加服务器</h2>
+    <div class="field">
+      <label>名称（本机在面板显示的名字，agent 的 --name 须一致）</label>
+      <input id="f_name" placeholder="例如 HK-VPS">
+    </div>
+    <div class="field">
+      <label>点击卡片跳转的管理页地址（可选）</label>
+      <input id="f_manage" placeholder="http://38.47.108.240:2054/ 或 3x-ui 面板地址">
+    </div>
+    <div class="field">
+      <label>3x-ui 面板地址（填了才能拉流量，留空只显示系统资源）</label>
+      <input id="f_purl" placeholder="http://38.47.108.240:2054/webBasePath">
+    </div>
+    <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>面板账号</label><input id="f_puser" placeholder="admin" value="admin"></div>
+      <div class="field"><label>面板密码</label><input id="f_ppass" type="password" placeholder="面板密码"></div>
+    </div>
+    <div class="field">
+      <label>端口探活（逗号分隔，可选）</label>
+      <input id="f_ports" placeholder="38.47.108.240:39999,38.47.108.240:30818">
+    </div>
+    <div class="field">
+      <label>流量配额覆盖（字节，可选；面板报 0 时生效）</label>
+      <input id="f_quota" placeholder="例如 536870912000 = 500GB">
+      <div class="hint">不填则由 3x-ui 面板读取。仅当面板 total 为 0 才用手填值兜底。</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="btnCancel">取消</button>
+      <button class="btn" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 管理服务器 弹窗 -->
+<div class="ov" id="listOv">
+  <div class="modal">
+    <h2>服务器列表（<span id="hostCount">0</span> 台）</h2>
+    <div class="muted" style="margin-bottom:12px">每台 VPS 仍只需在其机器上跑一次 agent。下面是自动生成的命令，复制后到对应 VPS 执行即可。</div>
+    <div id="hostList"></div>
+    <div class="modal-actions">
+      <button class="btn" id="btnCloseList">关闭</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const REFRESH = {{REFRESH}} * 1000;
+const KEY = {{KEY}};
+const SERVER = location.origin;
 
 function bytes(n){
   if(!n || n<0) n = 0;
@@ -175,7 +252,7 @@ async function tick(){
     live.className = 'dot live';
     const grid = document.getElementById('grid');
     if(!d.vps || !d.vps.length){
-      grid.innerHTML = '<div class="empty">还没有上报数据。请在目标 VPS 上运行 agent。</div>';
+      grid.innerHTML = '<div class="empty">还没有上报数据。点右上角「+ 添加服务器」填入信息，再到对应 VPS 跑 agent。</div>';
       st.textContent = '等待 agent 上报';
       return;
     }
@@ -187,6 +264,92 @@ async function tick(){
     st.textContent = '连接失败：'+e;
   }
 }
+
+// ---- 主机管理 ----
+function agentCmd(h){
+  let c = 'vps-probe agent --server '+SERVER+' --key '+KEY+' --name '+h.name;
+  if(h.port_check && h.port_check.length) c += ' --port-check '+h.port_check.join(',');
+  return c;
+}
+
+async function loadHosts(){
+  const r = await fetch('/api/hosts',{cache:'no-store'});
+  const list = await r.json();
+  document.getElementById('hostCount').textContent = list.length;
+  const box = document.getElementById('hostList');
+  if(!list.length){ box.innerHTML = '<div class="muted">暂无服务器。点「+ 添加服务器」新增。</div>'; return; }
+  box.innerHTML = list.map(h=>{
+    const cmd = agentCmd(h);
+    return '<div class="hitem">'
+      + '<div class="hn"><b>'+esc(h.name)+'</b>'
+      + (h.panel?'<span class="tag">面板</span>':'<span class="tag">仅资源</span>')
+      + '<button class="btn ghost" onclick="editHost(\''+esc(h.name)+'\')">编辑</button>'
+      + '<button class="btn danger" onclick="delHost(\''+esc(h.name)+'\')">删除</button></div>'
+      + '<div class="ha">'+esc(cmd)+'<button class="copy" onclick="copyText(this)">复制</button></div>'
+      + '</div>';
+  }).join('');
+}
+
+function copyText(btn){
+  const txt = btn.parentElement.textContent.replace('复制','').trim();
+  navigator.clipboard.writeText(txt).then(()=>{ const o=btn.textContent; btn.textContent='已复制'; setTimeout(()=>btn.textContent=o,1200); });
+}
+
+function openAdd(){
+  document.getElementById('formTitle').textContent = '添加服务器';
+  ['f_name','f_manage','f_purl','f_puser','f_ppass','f_ports','f_quota'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_puser').value='admin';
+  document.getElementById('formOv').dataset.edit='';
+  document.getElementById('formOv').classList.add('show');
+}
+async function editHost(name){
+  const r = await fetch('/api/hosts',{cache:'no-store'});
+  const list = await r.json();
+  const h = list.find(x=>x.name===name);
+  if(!h) return;
+  document.getElementById('formTitle').textContent = '编辑服务器 · '+name;
+  document.getElementById('f_name').value = h.name;
+  document.getElementById('f_manage').value = h.manage_url||'';
+  document.getElementById('f_purl').value = h.panel?h.panel.url:'';
+  document.getElementById('f_puser').value = h.panel?h.panel.username:'admin';
+  document.getElementById('f_ppass').value = h.panel?h.panel.password:'';
+  document.getElementById('f_ports').value = (h.port_check||[]).join(',');
+  document.getElementById('f_quota').value = h.quota>0?h.quota:'';
+  document.getElementById('formOv').dataset.edit = name;
+  document.getElementById('formOv').classList.add('show');
+}
+async function saveHost(){
+  const name = document.getElementById('f_name').value.trim();
+  if(!name){ alert('名称不能为空'); return; }
+  const purl = document.getElementById('f_purl').value.trim();
+  const body = {
+    name,
+    manage_url: document.getElementById('f_manage').value.trim(),
+    panel: purl ? { url: purl, username: document.getElementById('f_puser').value.trim()||'admin', password: document.getElementById('f_ppass').value } : null,
+    port_check: document.getElementById('f_ports').value.split(',').map(s=>s.trim()).filter(Boolean),
+    quota: parseInt(document.getElementById('f_quota').value)||0
+  };
+  const r = await fetch('/api/hosts?key='+encodeURIComponent(KEY),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const j = await r.json();
+  if(!j.ok){ alert('保存失败：'+(j.error||r.status)); return; }
+  document.getElementById('formOv').classList.remove('show');
+  await loadHosts();
+}
+async function delHost(name){
+  if(!confirm('确定删除「'+name+'」？该 VPS 的卡片将从面板移除（已安装的 agent 仍可运行，只是不再显示）。')) return;
+  const r = await fetch('/api/hosts/'+encodeURIComponent(name)+'?key='+encodeURIComponent(KEY),{method:'DELETE'});
+  const j = await r.json();
+  if(!j.ok){ alert('删除失败：'+(j.error||r.status)); return; }
+  await loadHosts();
+}
+
+document.getElementById('btnAdd').onclick = openAdd;
+document.getElementById('btnManage').onclick = async ()=>{ await loadHosts(); document.getElementById('listOv').classList.add('show'); };
+document.getElementById('btnCancel').onclick = ()=>document.getElementById('formOv').classList.remove('show');
+document.getElementById('btnSave').onclick = saveHost;
+document.getElementById('btnCloseList').onclick = ()=>document.getElementById('listOv').classList.remove('show');
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('show'); }));
+
 tick();
 setInterval(tick, REFRESH);
 </script>

@@ -15,7 +15,7 @@ mod web;
 
 use std::env;
 
-const VERSION: &str = "2.0.0";
+const VERSION: &str = "2.1.0";
 
 fn usage() -> String {
     format!(
@@ -30,6 +30,9 @@ fn usage() -> String {
 serve 选项:
   --config <file>     配置文件路径（默认 ./config.json）
   --listen <addr>     覆盖配置里的监听地址，如 0.0.0.0:8899
+
+  面板网页里可直接「添加 / 编辑 / 删除」服务器（无需手改 config.json），
+  N 台 VPS 就在网页里点 N 次表单；每台 VPS 仍只需跑一次 agent。
 
 agent 选项:
   --server <URL>      面板地址，如 http://1.2.3.4:8899
@@ -95,7 +98,7 @@ fn main() {
                 cfg.vps.len(),
                 cfg.listen
             );
-            if let Err(e) = serve::run(cfg) {
+            if let Err(e) = serve::run(cfg, &path) {
                 eprintln!("[vps-probe] 启动失败：{}", e);
                 std::process::exit(1);
             }
