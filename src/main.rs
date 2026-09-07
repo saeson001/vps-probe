@@ -13,9 +13,12 @@ mod panel;
 mod serve;
 mod web;
 
+#[cfg(feature = "gui")]
+mod gui;
+
 use std::env;
 
-const VERSION: &str = "2.1.0";
+const VERSION: &str = "2.2.0";
 
 fn usage() -> String {
     format!(
@@ -72,6 +75,18 @@ fn has(flag: &str) -> bool {
 
 fn main() {
     let cmd = env::args().nth(1).unwrap_or_default();
+
+    // On the GUI build, double-clicking the exe (no subcommand) opens the
+    // native window. Explicit subcommands (serve/agent/init/version) still
+    // work for headless / server use.
+    #[cfg(feature = "gui")]
+    {
+        let a: Vec<String> = env::args().collect();
+        if a.len() <= 1 || a.get(1).map(|s| s.as_str()) == Some("--gui") {
+            gui::run();
+            return;
+        }
+    }
 
     match cmd.as_str() {
         "serve" => {

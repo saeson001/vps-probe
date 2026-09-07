@@ -24,10 +24,11 @@ jobs:
             target: aarch64-unknown-linux-musl
             cross: true
             asset: vps-probe-linux-arm64
-          # ---- Windows (dashboard convenience) ----
+          # ---- Windows (native GUI launcher, built with the `gui` feature) ----
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             cross: false
+            features: gui
             asset: vps-probe-windows-amd64.exe
 
     steps:
@@ -51,10 +52,11 @@ jobs:
       - name: Build
         shell: bash
         run: |
+          FEATURES="${{ matrix.features && format('--features {0}', matrix.features) || '' }}"
           if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
+            cross build --release --target ${{ matrix.target }} $FEATURES
           else
-            cargo build --release --target ${{ matrix.target }}
+            cargo build --release --target ${{ matrix.target }} $FEATURES
           fi
 
       - name: Package

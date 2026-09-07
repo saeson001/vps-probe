@@ -8,6 +8,22 @@
 
 ---
 
+## Windows 原生 GUI（双击即用，零命令行）
+
+Windows 的 `vps-probe-windows-amd64.exe` **内建 GUI**：直接双击运行就会弹出一个原生窗口（不用命令行、不用 .bat、不用浏览器填表）。
+
+- **面板模式**：填标题 / 监听地址 / 共享密钥，点「▶ 启动面板」即可；点「打开网页面板」看实时卡片
+- **服务器列表**：点「+ 添加服务器」填表单（名字 / 管理页 URL / 3x-ui 面板账号密码 / 端口探活），N 台 VPS 就点 N 次；每台可编辑 / 删除
+- **作为 Agent 上报**：切到「作为 Agent 上报」页，填面板地址 + 密钥 + 本机名，点「▶ 启动 Agent」即可把自己这台机器也监控起来
+- 配置自动保存在 exe 同目录的 `panel-config.json`，下次打开自动回填
+- 运行状态、Agent 上报日志实时显示在窗口底部
+
+> GUI 只是配置 + 启动器：它把同样的 `vps-probe.exe` 以 `serve` / `agent` 子进程方式拉起，并通过面板自带
+> 的 `/api/hosts` 接口管理主机——所以核心仍是单个零依赖二进制。
+> Linux 服务器版（`linux-amd64` / `linux-arm64`）为保持 musl 静态零依赖，默认**不带 GUI**，请走下方命令行 / 一键脚本。
+
+---
+
 ## 常见问题
 
 **Q：`agent` 是在 VPS 上跑吗？VPS 没装 Python 怎么办？**
@@ -129,13 +145,17 @@ ufw allow 8899/tcp
 
 ```bash
 cargo build --release
-# Linux 静态版
+# Linux 静态版（零依赖）
 rustup target add x86_64-unknown-linux-musl
 sudo apt install musl-tools
 cargo build --release --target x86_64-unknown-linux-musl
+
+# Windows 原生 GUI 版（含 egui/eframe，双击即弹窗口）
+cargo build --release --features gui --target x86_64-pc-windows-msvc
 ```
 
 产物：`target/x86_64-unknown-linux-musl/release/vps-probe`（`ldd` 显示 `statically linked`）。
+Windows GUI 版默认带 `gui` 特性由 CI 自动构建。
 
 打 tag 会自动触发 GitHub Actions 编译 amd64 / arm64 / Windows 并发布 Release。
 

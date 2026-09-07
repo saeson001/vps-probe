@@ -1,15 +1,24 @@
 [package]
 name = "vps-probe"
-version = "2.1.0"
+version = "2.2.0"
 edition = "2021"
-description = "Single-binary VPS probe: agent + dashboard, zero dependencies (pure Rust stdlib)"
+description = "Single-binary VPS probe: agent + dashboard, with a native GUI launcher (Windows). Zero deps in the core/CLI build."
 license = "MIT"
 
 [[bin]]
 name = "vps-probe"
 path = "src/main.rs"
 
+[features]
+# The native GUI (egui/eframe) is only compiled into the Windows convenience
+# build. The Linux server build stays dependency-free and statically linked.
+default = []
+gui = ["dep:eframe", "dep:egui"]
+
 [dependencies]
+# GUI deps — only pulled in with the `gui` feature.
+eframe = { version = "0.28", default-features = false, features = ["glow"], optional = true }
+egui = { version = "0.28", optional = true }
 
 [profile.release]
 opt-level = "z"
