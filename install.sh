@@ -138,8 +138,21 @@ if [ "$MODE" = "agent" ]; then
     [ -z "$KEY" ]    && { ask "共享密钥（与面板 config.json 的 key 一致）:"; read -r KEY; }
     [ -z "$NAME" ]   && { ask "本机名称 [默认 $(hostname 2>/dev/null || echo vps)]:"; read -r NAME; }
   fi
-  [ -z "$SERVER" ] && { err "缺少面板地址"; exit 1; }
-  [ -z "$KEY" ]    && { err "缺少共享密钥"; exit 1; }
+  if [ -z "$SERVER" ]; then
+    err "缺少面板地址（agent 必须知道往哪个面板上报）"
+    echo "  用法一 · 非交互（推荐，用环境变量传参）："
+    echo "    MODE=agent SERVER=http://面板IP:8899 KEY=共享密钥 NAME=本机名 \\"
+    echo "      curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | bash"
+    echo "  用法二 · 先下载再交互运行（避免 curl|bash 吃掉了终端输入）："
+    echo "    curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh -o /tmp/install.sh"
+    echo "    bash /tmp/install.sh"
+    exit 1
+  fi
+  [ -z "$KEY" ] && {
+    err "缺少共享密钥（KEY，须与面板 config.json 的 key 一致）"
+    echo "  传入方式同上： MODE=agent SERVER=... KEY=你的密钥 ... curl ...|bash"
+    exit 1
+  }
   NAME="${NAME:-$(hostname 2>/dev/null || echo vps)}"
 
   ARGS="--server $SERVER --key $KEY --name $NAME --interval $INTERVAL"
