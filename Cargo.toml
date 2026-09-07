@@ -1,6 +1,6 @@
 [package]
 name = "vps-probe"
-version = "2.2.0"
+version = "2.3.0"
 edition = "2021"
 description = "Single-binary VPS probe: agent + dashboard, with a native GUI launcher (Windows). Zero deps in the core/CLI build."
 license = "MIT"

@@ -661,6 +661,62 @@ pub fn run() {
     let _ = eframe::run_native(
         "VPS Probe",
         options,
-        Box::new(|_cc| Ok(Box::new(GuiApp::new()) as Box<dyn eframe::App>)),
+        Box::new(|cc| {
+            // Load a CJK-capable font so Chinese text doesn't render as boxes.
+            setup_fonts(&cc.egui_ctx);
+            Ok(Box::new(GuiApp::new()) as Box<dyn eframe::App>)
+        }),
     );
+}
+
+/// Try to load a system CJK font (Microsoft YaHei on Windows) and merge it into
+/// egui's default font definitions so all Chinese characters render correctly.
+fn setup_fonts(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+
+    // Windows: use Microsoft YaHei (available on every Windows install).
+    // Linux: try Noto Sans CJK or WenQuanYi Micro Hei.
+    // Fallback: if no CJK font found, stick with default (Chinese → tofu).
+    #[cfg(target_os = "windows")]
+    let cjk_font_paths = vec![
+        r"C:\Windows\Fonts\msyh.ttc",   // 微软雅黑
+        r"C:\Windows\Fonts\msyh.ttf",
+        r"C:\Windows\Fonts\simhei.ttf", // 黑体
+    ];
+    #[cfg(not(target_os = "windows"))]
+    let cjk_font_paths = vec![
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/wqy-microhei/wqy-microhei.ttc",
+    ];
+
+    let mut loaded = false;
+    for path in &cjk_font_paths {
+        if std::path::Path::new(path).exists() {
+            match std::fs::read(path) {
+                Ok(font_data) => {
+                    fonts.font_data.insert(
+                        "cjk_font".to_owned(),
+                        egui::FontData::from_owned(font_data),
+                    );
+                    // Insert the CJK font into both the proportional and monospace
+                    // families so it's used as fallback for any missing glyphs.
+                    if let Some(proportional) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+                        proportional.insert(0, "cjk_font".to_owned());
+                    }
+                    if let Some(monospace) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+                        monospace.insert(0, "cjk_font".to_owned());
+                    }
+                    loaded = true;
+                    break;
+                }
+                Err(_) => continue,
+            }
+        }
+    }
+
+    ctx.set_fonts(fonts);
+    if !loaded {
+        eprintln!("[vps-probe] 警告：未找到 CJK 字体，中文可能显示为方块");
+    }
 }

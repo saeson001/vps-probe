@@ -4,6 +4,9 @@
 //! hand-rolled on top of `std`, so the release build cross-compiles to a
 //! fully static musl binary that runs on any Linux box with no runtime deps.
 
+// Hide the black console window on Windows when launching the GUI.
+#![cfg_attr(all(feature = "gui", target_os = "windows"), windows_subsystem = "windows")]
+
 mod agent;
 mod config;
 mod http;
@@ -18,7 +21,7 @@ mod gui;
 
 use std::env;
 
-const VERSION: &str = "2.2.0";
+const VERSION: &str = "2.3.0";
 
 fn usage() -> String {
     format!(
