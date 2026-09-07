@@ -1,0 +1,19 @@
+[package]
+name = "vps-probe"
+version = "2.0.0"
+edition = "2021"
+description = "Single-binary VPS probe: agent + dashboard, zero dependencies (pure Rust stdlib)"
+license = "MIT"
+
+[[bin]]
+name = "vps-probe"
+path = "src/main.rs"
+
+[dependencies]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
