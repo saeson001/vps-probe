@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+:root{
+  --bg:#0d1117; --card:#161b22; --card2:#1c2330; --line:#2a3038;
+  --fg:#e6edf3; --dim:#8b949e; --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+  --acc:#58a6ff; --acc2:#a371f7;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Microsoft YaHei",sans-serif;padding:20px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+h1{font-size:19px;font-weight:600;letter-spacing:.5px}
+.sub{color:var(--dim);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);display:inline-block}
+.live{background:var(--ok);box-shadow:0 0 0 3px rgba(63,185,80,.15)}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;transition:.18s;position:relative;overflow:hidden}
+.card:hover{border-color:#3d444d;transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,.35)}
+.card.off{opacity:.55}
+.chd{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.st{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.st.on{background:var(--ok);box-shadow:0 0 0 3px rgba(63,185,80,.18)}
+.st.off{background:var(--bad);box-shadow:0 0 0 3px rgba(248,81,73,.18)}
+.nm{font-size:15px;font-weight:600;text-decoration:none;color:var(--fg);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+a.nm:hover{color:var(--acc);text-decoration:underline}
+.tag{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:20px;padding:1px 8px;white-space:nowrap}
+.os{font-size:11px;color:var(--dim);margin-bottom:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.row span:last-child{color:var(--dim);font-variant-numeric:tabular-nums}
+.bar{height:6px;background:#21262d;border-radius:4px;overflow:hidden;margin:3px 0 10px}
+.bar i{display:block;height:100%;border-radius:4px;transition:width .5s}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:10px}
+.kv{background:var(--card2);border-radius:7px;padding:6px 9px}
+.kv b{display:block;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.kv em{font-style:normal;font-size:10px;color:var(--dim)}
+.traf{margin-top:11px;border-top:1px solid var(--line);padding-top:11px}
+.big{display:flex;align-items:baseline;gap:7px;margin-bottom:3px}
+.big b{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.big em{font-style:normal;font-size:11px;color:var(--dim)}
+.nodes{margin-top:9px;display:flex;flex-direction:column;gap:5px}
+.node{background:var(--card2);border-radius:7px;padding:7px 9px;font-size:11.5px}
+.node .n1{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px}
+.node .n1 b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node .n1 span{color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nbar{height:4px;background:#21262d;border-radius:3px;overflow:hidden}
+.nbar i{display:block;height:100%;border-radius:3px}
+.ports{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.pt{font-size:10px;padding:2px 7px;border-radius:20px;background:#21262d;color:var(--dim);border:1px solid var(--line)}
+.pt.ok{color:var(--ok);border-color:rgba(63,185,80,.35)}
+.pt.no{color:var(--bad);border-color:rgba(248,81,73,.35)}
+.err{margin-top:9px;font-size:11px;color:var(--warn);background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.25);border-radius:7px;padding:6px 9px;word-break:break-all}
+.empty{color:var(--dim);text-align:center;padding:50px 0}
+footer{margin-top:20px;color:var(--dim);font-size:11px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="live"></span>
+  <h1>{{TITLE}}</h1>
+  <span class="sub" id="status">加载中…</span>
+</header>
+<div id="grid"><div class="empty">正在加载…</div></div>
+<footer>vps-probe · Rust 单文件静态二进制 · 卡片可点击跳转管理页</footer>
+
+<script>
+const REFRESH = {{REFRESH}} * 1000;
+
+function bytes(n){
+  if(!n || n<0) n = 0;
+  const u=['B','KB','MB','GB','TB','PB'];
+  let i=0; let v=Number(n);
+  while(v>=1024 && i<u.length-1){v/=1024;i++;}
+  return (v>=100?v.toFixed(0):v.toFixed(v>=10?1:2))+' '+u[i];
+}
+function rate(n){ return bytes(n)+'/s'; }
+function uptime(s){
+  const d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60);
+  if(d>0) return d+'天'+h+'小时';
+  if(h>0) return h+'小时'+m+'分';
+  return m+'分';
+}
+function col(p){ return p>=90?'var(--bad)':p>=70?'var(--warn)':'var(--ok)'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function card(v){
+  const on = v.online;
+  const hasPanel = !!v.panel_configured;
+  const usedTotal = v.traffic ? v.traffic.used : 0;
+  const quotaTotal = v.traffic ? v.traffic.quota : 0;
+  const remain = quotaTotal>0 ? Math.max(0, quotaTotal-usedTotal) : 0;
+  const usedPct = quotaTotal>0 ? Math.min(100, usedTotal/quotaTotal*100) : 0;
+
+  let h = '<div class="card'+(on?'':' off')+'">';
+  h += '<div class="chd"><span class="st '+(on?'on':'off')+'"></span>';
+  if(v.manage_url){
+    h += '<a class="nm" href="'+esc(v.manage_url)+'" target="_blank" rel="noopener" title="'+esc(v.manage_url)+'">'+esc(v.name)+'</a>';
+  } else {
+    h += '<span class="nm">'+esc(v.name)+'</span>';
+  }
+  h += '<span class="tag">'+(on?'在线':'离线')+'</span>';
+  if(hasPanel) h += '<span class="tag">面板</span>';
+  h += '</div>';
+
+  if(v.metrics){
+    const m = v.metrics;
+    h += '<div class="os">'+esc(m.os||'')+(on?' · 已运行 '+uptime(m.uptime_secs||0):'')+'</div>';
+    h += '<div class="row"><span>CPU '+(m.cpu_percent||0).toFixed(1)+'%</span><span>'+(m.cores||1)+' 核</span></div>';
+    h += '<div class="bar"><i style="width:'+Math.min(100,m.cpu_percent||0)+'%;background:'+col(m.cpu_percent||0)+'"></i></div>';
+    const mp = m.mem_percent||0;
+    h += '<div class="row"><span>内存 '+mp.toFixed(1)+'%</span><span>'+bytes(m.mem_used)+' / '+bytes(m.mem_total)+'</span></div>';
+    h += '<div class="bar"><i style="width:'+Math.min(100,mp)+'%;background:'+col(mp)+'"></i></div>';
+    if(m.disk_total>0){
+      const dp = m.disk_percent||0;
+      h += '<div class="row"><span>磁盘 '+dp.toFixed(0)+'%</span><span>'+bytes(m.disk_used)+' / '+bytes(m.disk_total)+'</span></div>';
+      h += '<div class="bar"><i style="width:'+Math.min(100,dp)+'%;background:'+col(dp)+'"></i></div>';
+    }
+    h += '<div class="grid2">';
+    h += '<div class="kv"><b>'+(m.load1||0).toFixed(2)+'</b><em>负载 1m</em></div>';
+    h += '<div class="kv"><b>'+rate(m.net_rx_rate||0)+'</b><em>下行</em></div>';
+    h += '<div class="kv"><b>'+(m.load5||0).toFixed(2)+'</b><em>负载 5m</em></div>';
+    h += '<div class="kv"><b>'+rate(m.net_tx_rate||0)+'</b><em>上行</em></div>';
+    h += '</div>';
+    if(m.ports && Object.keys(m.ports).length){
+      h += '<div class="ports">';
+      for(const [p,ok] of Object.entries(m.ports)){
+        h += '<span class="pt '+(ok?'ok':'no')+'">'+esc(p)+'</span>';
+      }
+      h += '</div>';
+    }
+  } else {
+    h += '<div class="os">'+(on?'等待首次上报…':'暂无数据（agent 未运行或密钥不匹配）')+'</div>';
+  }
+
+  if(hasPanel){
+    h += '<div class="traf">';
+    if(v.traffic_error){
+      h += '<div class="err">面板读取失败：'+esc(v.traffic_error)+'</div>';
+    } else if(v.traffic){
+      h += '<div class="row"><span>流量剩余</span><span>已用 '+bytes(usedTotal)+' / '+bytes(quotaTotal)+'</span></div>';
+      h += '<div class="big"><b style="color:'+col(usedPct)+'">'+bytes(remain)+'</b><em>剩余</em></div>';
+      h += '<div class="bar"><i style="width:'+usedPct+'%;background:'+col(usedPct)+'"></i></div>';
+      if(v.traffic.nodes && v.traffic.nodes.length){
+        h += '<div class="nodes">';
+        for(const n of v.traffic.nodes){
+          const nu = (n.up||0)+(n.down||0);
+          const np = n.total>0 ? Math.min(100, nu/n.total*100) : 0;
+          const nr = n.total>0 ? Math.max(0,n.total-nu) : 0;
+          const label = n.client ? (n.node||('端口 '+n.port))+' · '+n.client : (n.node||('端口 '+n.port));
+          h += '<div class="node">';
+          h += '<div class="n1"><b title="'+esc(label)+'">'+esc(label)+'</b>';
+          h += '<span>'+(n.total>0 ? bytes(nr)+' 剩余 / '+bytes(n.total) : bytes(nu))+'</span></div>';
+          h += '<div class="nbar"><i style="width:'+np+'%;background:'+col(np)+'"></i></div>';
+          h += '</div>';
+        }
+        h += '</div>';
+      }
+    }
+    h += '</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+async function tick(){
+  const live = document.getElementById('live');
+  const st = document.getElementById('status');
+  try{
+    const r = await fetch('/api/data',{cache:'no-store'});
+    const d = await r.json();
+    live.className = 'dot live';
+    const grid = document.getElementById('grid');
+    if(!d.vps || !d.vps.length){
+      grid.innerHTML = '<div class="empty">还没有上报数据。请在目标 VPS 上运行 agent。</div>';
+      st.textContent = '等待 agent 上报';
+      return;
+    }
+    grid.innerHTML = d.vps.map(card).join('');
+    const onCount = d.vps.filter(v=>v.online).length;
+    st.textContent = onCount+' / '+d.vps.length+' 在线 · '+new Date().toLocaleTimeString('zh-CN');
+  }catch(e){
+    live.className = 'dot';
+    st.textContent = '连接失败：'+e;
+  }
+}
+tick();
+setInterval(tick, REFRESH);
+</script>
+</body>
+</html>
