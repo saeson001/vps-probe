@@ -112,6 +112,18 @@ fi
 
 MODE="${MODE:-}"
 if [ -z "$MODE" ]; then
+  # Classic curl|bash pitfall: env vars placed before `curl` don't reach `bash`.
+  # Warn loudly so the user doesn't get a silent default-to-agent surprise.
+  if [ ! -t 0 ]; then
+    warn "检测到 stdin 是管道（即你用了 curl ... | bash），无法交互选择组件。"
+    warn "脚本已用默认组件 agent，但你的 MODE/SERVER 等环境变量很可能没传进来——"
+    warn "因为它们被绑定到了 curl 上，而不是管道右侧的 bash。"
+    warn "正确写法（变量放在 bash 后面）："
+    echo "    curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | MODE=serve PORT=8899 KEY=密钥 bash"
+    echo "  或先下载再运行："
+    echo "    curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh -o /tmp/install.sh"
+    echo "    MODE=serve PORT=8899 KEY=密钥 bash /tmp/install.sh"
+  fi
   echo
   echo "请选择要安装的组件："
   echo "  1) agent   —— 装在这台 VPS 上，上报 CPU/内存/负载/网速（每台被监控的 VPS 都要装）"
