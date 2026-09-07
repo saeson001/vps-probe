@@ -1,0 +1,19 @@
+[Unit]
+Description=vps-probe agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 改成你的 dashboard 地址 / 密钥 / 节点名；--port-check 可选（探活节点 TCP 端口）
+ExecStart=/usr/bin/python3 /opt/vps-probe/agent.py \
+    --server http://你的面板机IP:8899 \
+    --key 你的密钥 \
+    --name HK-VPS \
+    --interval 30 \
+    --port-check 127.0.0.1:39999
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
