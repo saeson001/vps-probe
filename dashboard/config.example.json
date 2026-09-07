@@ -1,0 +1,27 @@
+{
+  "listen": "0.0.0.0:8899",
+  "key": "请改成一段随机密钥",
+  "title": "saeson VPS 探针",
+  "offline_after": 90,
+  "traffic_interval": 300,
+  "vps": [
+    {
+      "name": "HK-VPS",
+      "manage_url": "http://38.47.108.240:面板端口/webBasePath",
+      "panel": {
+        "url": "http://38.47.108.240:面板端口/webBasePath",
+        "username": "admin",
+        "password": "面板密码"
+      }
+    },
+    {
+      "name": "JP-VPS",
+      "manage_url": "http://140.235.37.110:8284/mGo8HWHf",
+      "panel": {
+        "url": "http://140.235.37.110:8284/mGo8HWHf",
+        "username": "admin",
+        "password": "面板密码"
+      }
+    }
+  ]
+}
