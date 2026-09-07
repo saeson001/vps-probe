@@ -105,9 +105,9 @@ vps-probe version
   "vps": [
     {
       "name": "HK-VPS",
-      "manage_url": "http://38.47.108.240:2054/xxxx",
+      "manage_url": "http://<HK的IP>:<3x-ui端口>/",
       "panel": {
-        "url": "http://38.47.108.240:2054/xxxx",
+        "url": "http://<HK的IP>:<3x-ui端口>/<webBasePath>",
         "username": "admin",
         "password": "面板密码"
       },
